@@ -9,15 +9,16 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .settings import get_settings
 from .auth import verified_firebase_user
 from .security import CredentialCipher, EncryptionUnavailable
-from .store import wodbuster_connection as load_wodbuster_connection, wodbuster_document
+from .store import schedules_collection, wodbuster_connection as load_wodbuster_connection, wodbuster_document
 from .wodbuster import InvalidCredentials, WodBusterClient, WodBusterError
+from .worker import run_due_schedules
 
 
 settings = get_settings()
@@ -48,6 +49,12 @@ def session(user: dict[str, object] = Depends(verified_firebase_user)) -> dict[s
 class WodBusterConnectionInput(BaseModel):
     username: str = Field(min_length=1, max_length=256)
     password: str = Field(min_length=1, max_length=512)
+
+
+class ScheduleInput(BaseModel):
+    weekday: int = Field(ge=0, le=6, description="Sunday=0, Monday=1")
+    class_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    launch_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
 def user_id(user: dict[str, object]) -> str:
@@ -133,3 +140,47 @@ def future_reservations(user: dict[str, object] = Depends(verified_firebase_user
     except WodBusterError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="No se pudieron leer las reservas de WodBuster") from exc
     return {"reservations": reservations}
+
+
+@app.get("/v1/schedules", include_in_schema=False)
+def schedules(user: dict[str, object] = Depends(verified_firebase_user)) -> dict[str, object]:
+    docs = schedules_collection(user_id(user)).where("active", "==", True).stream()
+    items = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+    return {"schedules": sorted(items, key=lambda item: (item["weekday"], item["class_time"]))}
+
+
+@app.post("/v1/schedules", include_in_schema=False)
+def create_schedule(schedule: ScheduleInput, user: dict[str, object] = Depends(verified_firebase_user)) -> dict[str, object]:
+    collection = schedules_collection(user_id(user))
+    duplicate = next((doc for doc in collection.where("active", "==", True).stream() if doc.to_dict().get("weekday") == schedule.weekday and doc.to_dict().get("class_time") == schedule.class_time), None)
+    if duplicate:
+        return {"id": duplicate.id, **duplicate.to_dict()}
+    document = collection.document()
+    payload = {
+        "weekday": schedule.weekday,
+        "class_time": schedule.class_time,
+        "launch_time": schedule.launch_time,
+        "active": True,
+        "created_at": datetime.now(timezone.utc),
+        "last_run_week": None,
+    }
+    document.set(payload)
+    return {"id": document.id, **payload}
+
+
+@app.delete("/v1/schedules/{schedule_id}", include_in_schema=False)
+def disable_schedule(schedule_id: str, user: dict[str, object] = Depends(verified_firebase_user)) -> dict[str, bool]:
+    document = schedules_collection(user_id(user)).document(schedule_id)
+    if not document.get().exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+    document.update({"active": False, "updated_at": datetime.now(timezone.utc)})
+    return {"disabled": True}
+
+
+@app.post("/internal/run-friday-bookings", include_in_schema=False)
+def run_friday_bookings(x_worker_token: str | None = Header(default=None)) -> dict[str, object]:
+    if not settings.worker_token or x_worker_token != settings.worker_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Worker authentication failed")
+    if not settings.encryption_key:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Credential vault unavailable")
+    return {"runs": run_due_schedules(settings.encryption_key)}

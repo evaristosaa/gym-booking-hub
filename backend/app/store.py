@@ -12,3 +12,7 @@ def wodbuster_document(uid: str):
 def wodbuster_connection(uid: str) -> dict[str, object] | None:
     snapshot = wodbuster_document(uid).get()
     return snapshot.to_dict() if snapshot.exists else None
+
+
+def schedules_collection(uid: str):
+    return firestore.client().collection("users").document(uid).collection("schedules")

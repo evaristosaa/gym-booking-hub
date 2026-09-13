@@ -21,6 +21,7 @@ const wodbusterMessage = document.querySelector("#wodbuster-message");
 const liveReservations = document.querySelector("#live-reservations");
 const liveEmpty = document.querySelector("#live-empty");
 let wodbusterStatus = { configured: false, verified: false };
+let remoteSchedules = null;
 
 function load() { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function save(items) { localStorage.setItem(key, JSON.stringify(items)); }
@@ -30,13 +31,26 @@ function nextDate(day) {
   d.setDate(d.getDate() + delta); return d;
 }
 function render() {
-  const items = load().sort((a, b) => a.day - b.day || a.time.localeCompare(b.time));
+  const source = remoteSchedules ?? load();
+  const items = source.map(item => ({
+    id: item.id,
+    day: item.weekday ?? item.day,
+    time: item.class_time ?? item.time,
+    launch: item.launch_time ?? item.launch,
+  })).sort((a, b) => a.day - b.day || a.time.localeCompare(b.time));
   agenda.replaceChildren(); empty.hidden = items.length > 0;
   for (const item of items) {
     const date = nextDate(Number(item.day));
     const li = document.createElement("li");
-    li.innerHTML = `<span class="date"><b>${date.getDate()}</b>${date.toLocaleDateString("es-ES", {month:"short"})}</span><div><strong>${weekdays[item.day]} · ${item.time}</strong><small>Lanzamiento: viernes · ${item.launch}</small></div><span class="state">BORRADOR</span><button class="delete" aria-label="Eliminar ${weekdays[item.day]} ${item.time}">×</button>`;
-    li.querySelector(".delete").onclick = () => { save(load().filter(x => x.id !== item.id)); render(); };
+    const state = remoteSchedules ? "ACTIVA" : "BORRADOR";
+    li.innerHTML = `<span class="date"><b>${date.getDate()}</b>${date.toLocaleDateString("es-ES", {month:"short"})}</span><div><strong>${weekdays[item.day]} · ${item.time}</strong><small>Intento: viernes · ${item.launch}</small></div><span class="state">${state}</span><button class="delete" aria-label="Eliminar ${weekdays[item.day]} ${item.time}">×</button>`;
+    li.querySelector(".delete").onclick = async () => {
+      if (remoteSchedules) {
+        await apiRequest(`/v1/schedules/${item.id}`, { method: "DELETE" });
+        remoteSchedules = remoteSchedules.filter(schedule => schedule.id !== item.id);
+      } else save(load().filter(x => x.id !== item.id));
+      render();
+    };
     agenda.append(li);
   }
 }
@@ -50,7 +64,12 @@ signInButton.onclick = () => authDialog.showModal();
 form.addEventListener("submit", event => {
   event.preventDefault();
   const item = {id: crypto.randomUUID(), day: form.weekday.value, time: form["class-time"].value, launch: form["launch-time"].value};
-  save([...load(), item]); dialog.close(); form.reset(); form["class-time"].value = "18:00"; form["launch-time"].value = "15:30"; render();
+  const complete = () => { dialog.close(); form.reset(); form["class-time"].value = "18:00"; form["launch-time"].value = "15:30"; render(); };
+  if (!auth.currentUser) { save([...load(), item]); complete(); return; }
+  apiRequest("/v1/schedules", { method: "POST", body: JSON.stringify({ weekday: Number(item.day), class_time: item.time, launch_time: item.launch }) })
+    .then(response => response.json())
+    .then(schedule => { remoteSchedules = [...(remoteSchedules || []), schedule]; complete(); })
+    .catch(() => { save([...load(), item]); complete(); });
 });
 
 const firebaseApp = initializeApp(window.GYM_BOOKING_FIREBASE);
@@ -147,6 +166,26 @@ async function refreshLiveReservations() {
     if (!payload.reservations?.length) liveEmpty.textContent = "No hay reservas confirmadas en las próximas tres semanas.";
   } catch { liveEmpty.textContent = "No se pudieron actualizar las reservas. Prueba otra vez."; }
 }
+async function syncSchedules() {
+  try {
+    const response = await apiRequest("/v1/schedules");
+    if (!response.ok) throw new Error("schedules-failed");
+    remoteSchedules = (await response.json()).schedules || [];
+    const drafts = load();
+    for (const draft of drafts) {
+      const create = await apiRequest("/v1/schedules", {
+        method: "POST",
+        body: JSON.stringify({ weekday: Number(draft.day), class_time: draft.time, launch_time: draft.launch }),
+      });
+      if (create.ok) {
+        const schedule = await create.json();
+        if (!remoteSchedules.some(item => item.id === schedule.id)) remoteSchedules.push(schedule);
+      }
+    }
+    if (drafts.length) localStorage.removeItem(key);
+    render();
+  } catch { remoteSchedules = null; render(); }
+}
 document.querySelector("#refresh-reservations").onclick = refreshLiveReservations;
 wodbusterForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -171,6 +210,7 @@ onAuthStateChanged(auth, user => {
   signInButton.textContent = user.email || "Mi cuenta";
   verifyRemoteSession(user);
   refreshWodBusterStatus();
+  syncSchedules();
 });
 
 render();

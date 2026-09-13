@@ -15,6 +15,7 @@ DEFAULT_ALLOWED_ORIGINS = (
 class Settings:
     allowed_origins: tuple[str, ...]
     encryption_key: str | None
+    worker_token: str | None
 
 
 def get_settings() -> Settings:
@@ -27,4 +28,5 @@ def get_settings() -> Settings:
     return Settings(
         allowed_origins=origins,
         encryption_key=os.getenv("GYM_BOOKING_ENCRYPTION_KEY"),
+        worker_token=os.getenv("GYM_BOOKING_WORKER_TOKEN"),
     )

@@ -122,3 +122,33 @@ class WodBusterClient:
                     "name": str(details.get("Nombre") or details.get("Actividad") or "Clase"),
                 })
         return reservations
+
+    def book(self, box_url: str, class_date: date, class_time: str) -> str:
+        """Book one configured class. Returns `booked` or `already_booked`."""
+        self.login()
+        epoch = int(datetime.combine(class_date, datetime.min.time(), tzinfo=timezone.utc).timestamp())
+        try:
+            response = self.session.get(f"{box_url}/athlete/handlers/LoadClass.ashx?ticks={epoch}", headers=HEADERS, timeout=12)
+            response.raise_for_status()
+            payload = response.json()
+            target = next((item for item in payload.get("Data", []) if item.get("Hora", "")[:5] == class_time), None)
+            if not target:
+                raise WodBusterError("No existe esa clase en el calendario")
+            state = (target.get("Valores") or [{}])[0]
+            if state.get("TipoEstado") == "Borrable":
+                return "already_booked"
+            details = state.get("Valor") or {}
+            if len(details.get("AtletasEntrenando") or []) >= int(details.get("Plazas") or 0):
+                raise WodBusterError("La clase está completa")
+            booking_id = details.get("Id")
+            if not booking_id:
+                raise WodBusterError("WodBuster no devolvió el identificador de la clase")
+            booked = self.session.get(f"{box_url}/athlete/handlers/Calendario_Inscribir.ashx?id={booking_id}&ticks={epoch}", headers=HEADERS, timeout=12)
+            booked.raise_for_status()
+            if not booked.json().get("Res", {}).get("EsCorrecto"):
+                raise WodBusterError("WodBuster rechazó la reserva")
+            return "booked"
+        except WodBusterError:
+            raise
+        except (ValueError, requests.RequestException) as exc:
+            raise WodBusterError("No se pudo completar la reserva en WodBuster") from exc
