@@ -62,6 +62,20 @@ async function authenticate(action) {
     authForm.reset(); authDialog.close();
   } catch (error) { authMessage.textContent = authError(error); }
 }
+async function verifyRemoteSession(user) {
+  try {
+    const token = await user.getIdToken();
+    const response = await fetch(`${window.GYM_BOOKING_FIREBASE.apiBaseUrl}/v1/session`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("session verification failed");
+    connectionTitle.textContent = "Sesión protegida";
+    connectionDetail.textContent = "Conecta WodBuster para sincronizar tus reservas reales.";
+  } catch {
+    connectionTitle.textContent = "Sesión local; servicio no disponible";
+    connectionDetail.textContent = "Tu cuenta está creada, pero la sincronización se reintentará.";
+  }
+}
 authForm.addEventListener("submit", event => { event.preventDefault(); authenticate("login"); });
 document.querySelector("#register").onclick = () => authenticate("register");
 onAuthStateChanged(auth, user => {
@@ -69,6 +83,7 @@ onAuthStateChanged(auth, user => {
   connectionTitle.textContent = "Sesión iniciada";
   connectionDetail.textContent = "WodBuster queda pendiente de conexión segura.";
   signInButton.textContent = user.email || "Mi cuenta";
+  verifyRemoteSession(user);
 });
 
 render();

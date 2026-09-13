@@ -7,5 +7,6 @@ window.GYM_BOOKING_FIREBASE = Object.freeze({
   projectId: "gym-booking-hub-20260913",
   storageBucket: "gym-booking-hub-20260913.firebasestorage.app",
   messagingSenderId: "56116479389",
-  appId: "1:56116479389:web:39e6303fb6721b8965db74"
+  appId: "1:56116479389:web:39e6303fb6721b8965db74",
+  apiBaseUrl: "https://gym-booking-hub-api-vfnsxy2wua-ew.a.run.app"
 });
