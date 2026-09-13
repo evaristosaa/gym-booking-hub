@@ -7,7 +7,7 @@ The browser authenticates through Firebase with an email/password account belong
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/v1/auth/start` | Start user login/registration flow. |
-| `POST` | `/v1/connections/wodbuster` | Verify and save an encrypted WodBuster connection. |
+| `PUT` | `/v1/connections/wodbuster` | Save an encrypted WodBuster connection. |
 | `GET` | `/v1/connections/wodbuster` | Read masked connection status only. |
 | `GET, POST` | `/v1/schedules` | List and create weekly targets. |
 | `PATCH, DELETE` | `/v1/schedules/{id}` | Change or disable a target. |

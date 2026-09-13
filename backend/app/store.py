@@ -1,0 +1,9 @@
+"""Server-only Firestore persistence for encrypted provider connections."""
+
+from __future__ import annotations
+
+from firebase_admin import firestore
+
+
+def wodbuster_document(uid: str):
+    return firestore.client().collection("users").document(uid).collection("private").document("wodbuster")

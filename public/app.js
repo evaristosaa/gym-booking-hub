@@ -13,6 +13,9 @@ const authMessage = document.querySelector("#auth-message");
 const signInButton = document.querySelector("#sign-in");
 const connectionTitle = document.querySelector("#connection-title");
 const connectionDetail = document.querySelector("#connection-detail");
+const wodbusterDialog = document.querySelector("#agent-dialog");
+const wodbusterForm = document.querySelector("#wodbuster-form");
+const wodbusterMessage = document.querySelector("#wodbuster-message");
 
 function load() { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function save(items) { localStorage.setItem(key, JSON.stringify(items)); }
@@ -35,7 +38,8 @@ function render() {
 
 document.querySelector("#add-target").onclick = () => dialog.showModal();
 document.querySelector("#close-dialog").onclick = document.querySelector("#cancel-dialog").onclick = () => dialog.close();
-document.querySelector("#agent-info").onclick = () => document.querySelector("#agent-dialog").showModal();
+document.querySelector("#agent-info").onclick = () => wodbusterDialog.showModal();
+document.querySelector("#close-wodbuster").onclick = document.querySelector("#cancel-wodbuster").onclick = () => wodbusterDialog.close();
 document.querySelector("#close-auth").onclick = () => authDialog.close();
 signInButton.onclick = () => authDialog.showModal();
 form.addEventListener("submit", event => {
@@ -76,6 +80,40 @@ async function verifyRemoteSession(user) {
     connectionDetail.textContent = "Tu cuenta está creada, pero la sincronización se reintentará.";
   }
 }
+async function apiRequest(path, options = {}) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("sign-in-required");
+  const token = await user.getIdToken();
+  return fetch(`${window.GYM_BOOKING_FIREBASE.apiBaseUrl}${path}`, {
+    ...options,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(options.headers || {}) },
+  });
+}
+async function refreshWodBusterStatus() {
+  try {
+    const response = await apiRequest("/v1/connections/wodbuster");
+    if (!response.ok) return;
+    const connection = await response.json();
+    if (connection.connected) {
+      connectionTitle.textContent = "WodBuster conectado";
+      connectionDetail.textContent = `Cuenta ${connection.usernameHint} guardada de forma cifrada.`;
+    }
+  } catch { /* Session status already communicates a transient backend problem. */ }
+}
+wodbusterForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  wodbusterMessage.textContent = "Guardando conexión cifrada…";
+  try {
+    const response = await apiRequest("/v1/connections/wodbuster", {
+      method: "PUT",
+      body: JSON.stringify({ username: document.querySelector("#wodbuster-username").value.trim(), password: document.querySelector("#wodbuster-password").value }),
+    });
+    if (!response.ok) throw new Error("save-failed");
+    wodbusterForm.reset(); wodbusterDialog.close(); await refreshWodBusterStatus();
+  } catch (error) {
+    wodbusterMessage.textContent = error.message === "sign-in-required" ? "Primero entra con tu cuenta de Gym Booking Hub." : "No se pudo guardar. Prueba de nuevo.";
+  }
+});
 authForm.addEventListener("submit", event => { event.preventDefault(); authenticate("login"); });
 document.querySelector("#register").onclick = () => authenticate("register");
 onAuthStateChanged(auth, user => {
@@ -84,6 +122,7 @@ onAuthStateChanged(auth, user => {
   connectionDetail.textContent = "WodBuster queda pendiente de conexión segura.";
   signInButton.textContent = user.email || "Mi cuenta";
   verifyRemoteSession(user);
+  refreshWodBusterStatus();
 });
 
 render();
