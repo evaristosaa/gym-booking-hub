@@ -26,9 +26,12 @@ let remoteSchedules = null;
 function load() { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function save(items) { localStorage.setItem(key, JSON.stringify(items)); }
 function nextDate(day) {
+  // The weekly plan always targets the calendar week after the current one.
+  // On a Sunday, for example, Monday means eight days away, never tomorrow.
   const d = new Date(); d.setHours(0, 0, 0, 0);
-  const delta = (day - d.getDay() + 7) % 7 || 7;
-  d.setDate(d.getDate() + delta); return d;
+  d.setDate(d.getDate() + 8 - d.getDay()); // next week's Monday
+  d.setDate(d.getDate() + (Number(day) === 0 ? 6 : Number(day) - 1));
+  return d;
 }
 function render() {
   const source = remoteSchedules ?? load();
