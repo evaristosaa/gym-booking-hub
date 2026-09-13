@@ -44,7 +44,7 @@ def test_wodbuster_preflight_allows_put_from_pages() -> None:
     response = TestClient(app).options(
         "/v1/connections/wodbuster",
         headers={
-            "Origin": "https://evaristosaa.github.io",
+            "Origin": "https://bailongo-pc-1.tail1e5afd.ts.net:8445",
             "Access-Control-Request-Method": "PUT",
         },
     )
