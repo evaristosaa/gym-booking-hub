@@ -13,9 +13,14 @@ const authMessage = document.querySelector("#auth-message");
 const signInButton = document.querySelector("#sign-in");
 const connectionTitle = document.querySelector("#connection-title");
 const connectionDetail = document.querySelector("#connection-detail");
+const connectionDot = document.querySelector("#connection-dot");
+const connectionButton = document.querySelector("#agent-info");
 const wodbusterDialog = document.querySelector("#agent-dialog");
 const wodbusterForm = document.querySelector("#wodbuster-form");
 const wodbusterMessage = document.querySelector("#wodbuster-message");
+const liveReservations = document.querySelector("#live-reservations");
+const liveEmpty = document.querySelector("#live-empty");
+let wodbusterStatus = { configured: false, verified: false };
 
 function load() { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function save(items) { localStorage.setItem(key, JSON.stringify(items)); }
@@ -38,7 +43,7 @@ function render() {
 
 document.querySelector("#add-target").onclick = () => dialog.showModal();
 document.querySelector("#close-dialog").onclick = document.querySelector("#cancel-dialog").onclick = () => dialog.close();
-document.querySelector("#agent-info").onclick = () => wodbusterDialog.showModal();
+connectionButton.onclick = () => wodbusterStatus.configured ? testWodBuster() : wodbusterDialog.showModal();
 document.querySelector("#close-wodbuster").onclick = document.querySelector("#cancel-wodbuster").onclick = () => wodbusterDialog.close();
 document.querySelector("#close-auth").onclick = () => authDialog.close();
 signInButton.onclick = () => authDialog.showModal();
@@ -94,12 +99,55 @@ async function refreshWodBusterStatus() {
     const response = await apiRequest("/v1/connections/wodbuster");
     if (!response.ok) return;
     const connection = await response.json();
-    if (connection.connected) {
-      connectionTitle.textContent = "WodBuster conectado";
-      connectionDetail.textContent = `Cuenta ${connection.usernameHint} guardada de forma cifrada.`;
+    wodbusterStatus = connection;
+    if (!connection.configured) return;
+    if (connection.verified) {
+      connectionTitle.textContent = "WodBuster verificado";
+      connectionDetail.textContent = `Cuenta ${connection.usernameHint} validada correctamente.`;
+      connectionDot.classList.add("healthy");
+      connectionButton.textContent = "Probar de nuevo";
+      refreshLiveReservations();
+    } else {
+      connectionTitle.textContent = "WodBuster sin validar";
+      connectionDetail.textContent = `Cuenta ${connection.usernameHint} guardada cifrada. Falta probarla.`;
+      connectionDot.classList.remove("healthy");
+      connectionButton.textContent = "Probar conexión";
     }
   } catch { /* Session status already communicates a transient backend problem. */ }
 }
+async function testWodBuster() {
+  connectionButton.disabled = true; connectionButton.textContent = "Probando…";
+  try {
+    const response = await apiRequest("/v1/connections/wodbuster/test", { method: "POST" });
+    if (!response.ok) throw new Error("test-failed");
+    await refreshWodBusterStatus();
+  } catch {
+    connectionTitle.textContent = "WodBuster no validado";
+    connectionDetail.textContent = "Revisa usuario y contraseña e inténtalo otra vez.";
+    connectionDot.classList.remove("healthy");
+  } finally { connectionButton.disabled = false; if (!wodbusterStatus.verified) connectionButton.textContent = "Probar conexión"; }
+}
+function renderLiveReservations(items) {
+  liveReservations.replaceChildren(); liveEmpty.hidden = items.length > 0;
+  for (const item of items) {
+    const date = new Date(`${item.date}T12:00:00`);
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="date"><b>${date.getDate()}</b>${date.toLocaleDateString("es-ES", {month:"short"})}</span><div><strong>${item.time}</strong><small>${item.name}</small></div><span class="state">CONFIRMADA</span>`;
+    liveReservations.append(li);
+  }
+}
+async function refreshLiveReservations() {
+  if (!wodbusterStatus.verified) return;
+  liveEmpty.hidden = false; liveEmpty.textContent = "Leyendo reservas confirmadas…";
+  try {
+    const response = await apiRequest("/v1/reservations");
+    if (!response.ok) throw new Error("reservations-failed");
+    const payload = await response.json();
+    renderLiveReservations(payload.reservations || []);
+    if (!payload.reservations?.length) liveEmpty.textContent = "No hay reservas confirmadas en las próximas tres semanas.";
+  } catch { liveEmpty.textContent = "No se pudieron actualizar las reservas. Prueba otra vez."; }
+}
+document.querySelector("#refresh-reservations").onclick = refreshLiveReservations;
 wodbusterForm.addEventListener("submit", async event => {
   event.preventDefault();
   wodbusterMessage.textContent = "Guardando conexión cifrada…";

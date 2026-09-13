@@ -17,9 +17,9 @@
     </header>
 
     <section class="status" aria-label="Estado de WodBuster">
-      <span class="dot"></span>
+      <span class="dot" id="connection-dot"></span>
       <div><strong id="connection-title">Sesión pendiente</strong><small id="connection-detail">Entra para sincronizar tu agenda entre dispositivos.</small></div>
-      <button type="button" id="agent-info">Estado</button>
+      <button type="button" id="agent-info">Conectar</button>
     </section>
 
     <section class="card">
@@ -29,8 +29,9 @@
     </section>
 
     <section class="card live-card">
-      <div class="section-title"><div><p class="eyebrow">AHORA</p><h2>Reservas vivas</h2></div><span class="state muted">SINCRONIZACIÓN PENDIENTE</span></div>
-      <p class="empty">Conecta WodBuster para ver aquí las clases confirmadas que aún no han pasado.</p>
+      <div class="section-title"><div><p class="eyebrow">AHORA</p><h2>Reservas vivas</h2></div><button type="button" class="secondary" id="refresh-reservations">Actualizar</button></div>
+      <ul id="live-reservations" class="agenda" aria-live="polite"></ul>
+      <p class="empty" id="live-empty">Prueba la conexión de WodBuster para ver aquí las clases confirmadas que aún no han pasado.</p>
     </section>
   </main>
 
