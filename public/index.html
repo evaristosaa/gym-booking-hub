@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102820">
+  <title>Gym Booking Hub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <p class="eyebrow">RESERVAS, SIN HUMO</p>
+      <h1>Tu semana de gym,<br><em>bajo control.</em></h1>
+      <p class="intro">Configura tus clases y el lanzamiento del viernes. La reserva real se ejecutará únicamente desde tu agente local.</p>
+    </header>
+
+    <section class="status" aria-label="Estado del agente">
+      <span class="dot"></span>
+      <div><strong>Agente local no conectado</strong><small>Esta demo guarda tu agenda solo en este dispositivo.</small></div>
+      <button type="button" id="agent-info">¿Qué es esto?</button>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><div><p class="eyebrow">PLAN SEMANAL</p><h2>Próximas reservas</h2></div><button type="button" class="primary" id="add-target">Añadir clase</button></div>
+      <ul id="agenda" class="agenda" aria-live="polite"></ul>
+      <p class="empty" id="empty-state">Aún no has programado clases. Añade la primera y deja de vivir al filo del aforo.</p>
+    </section>
+
+    <section class="card info-card">
+      <p class="eyebrow">CÓMO FUNCIONARÁ</p>
+      <h2>Viernes, 15:30</h2>
+      <p>Tu agente local abrirá el proceso de reserva para la semana siguiente y traerá aquí el resultado: confirmada, pendiente o fallida.</p>
+    </section>
+  </main>
+
+  <dialog id="target-dialog">
+    <form method="dialog" id="target-form">
+      <div class="dialog-head"><h2>Nueva clase</h2><button type="button" class="icon" id="close-dialog" aria-label="Cerrar">×</button></div>
+      <label>Día<select id="weekday" required><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option></select></label>
+      <label>Hora de clase<input id="class-time" type="time" value="18:00" required></label>
+      <label>Lanzar el viernes a<input id="launch-time" type="time" value="15:30" required></label>
+      <div class="dialog-actions"><button type="button" class="secondary" id="cancel-dialog">Cancelar</button><button class="primary" value="save">Guardar</button></div>
+    </form>
+  </dialog>
+  <dialog id="agent-dialog"><form method="dialog"><div class="dialog-head"><h2>Agente local</h2><button class="icon" aria-label="Cerrar">×</button></div><p>GitHub Pages no puede guardar tus claves ni reservar con el navegador cerrado. El agente será un programa privado instalado por cada persona en su propio equipo.</p><p>La siguiente fase conectará esta agenda con ese agente mediante emparejamiento seguro y revocable.</p><button class="primary">Entendido</button></form></dialog>
+  <script src="app.js"></script>
+</body>
+</html>
+
