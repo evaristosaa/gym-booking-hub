@@ -38,3 +38,15 @@ def test_wodbuster_connection_never_returns_password(monkeypatch) -> None:
     assert response.status_code == 200
     assert "password" not in response.text
     assert document.value["password_ciphertext"] != "secret-value"
+
+
+def test_wodbuster_preflight_allows_put_from_pages() -> None:
+    response = TestClient(app).options(
+        "/v1/connections/wodbuster",
+        headers={
+            "Origin": "https://evaristosaa.github.io",
+            "Access-Control-Request-Method": "PUT",
+        },
+    )
+    assert response.status_code == 200
+    assert "PUT" in response.headers["access-control-allow-methods"]
