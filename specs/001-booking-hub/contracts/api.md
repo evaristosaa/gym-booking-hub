@@ -2,6 +2,8 @@
 
 All endpoints are HTTPS. A user session is required except account-start endpoints. Responses must never include provider passwords, session cookies or encrypted credential blobs.
 
+The browser authenticates through Firebase with an email/password account belonging to Gym Booking Hub. It sends its Firebase ID token as `Authorization: Bearer <token>`; it does not need a Firebase account of its own.
+
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/v1/auth/start` | Start user login/registration flow. |
@@ -13,5 +15,6 @@ All endpoints are HTTPS. A user session is required except account-start endpoin
 | `POST` | `/v1/push-subscriptions` | Register a device push subscription. |
 | `DELETE` | `/v1/push-subscriptions/{id}` | Revoke a device subscription. |
 
-The internal worker endpoint is never public. It claims due schedules atomically, executes provider attempts, stores only safe diagnostic text, then enqueues push notifications.
+| `GET` | `/v1/session` | Verify the Firebase token and return only the authenticated app user ID. |
 
+The internal worker endpoint is never public. It claims due schedules atomically, executes provider attempts, stores only safe diagnostic text, then enqueues push notifications.

@@ -12,12 +12,12 @@
   <main class="shell">
     <header class="compact-header">
       <div><p class="eyebrow">GYM BOOKING HUB</p><h1>Mis reservas</h1></div>
-      <button type="button" class="account" id="connect">Conectar<br>WodBuster</button>
+      <button type="button" class="account" id="sign-in">Entrar<br>o crear cuenta</button>
     </header>
 
     <section class="status" aria-label="Estado de WodBuster">
       <span class="dot"></span>
-      <div><strong>WodBuster sin conectar</strong><small>Conecta tu cuenta para ver reservas reales.</small></div>
+      <div><strong id="connection-title">Sesión pendiente</strong><small id="connection-detail">Entra para sincronizar tu agenda entre dispositivos.</small></div>
       <button type="button" id="agent-info">Estado</button>
     </section>
 
@@ -42,8 +42,18 @@
       <div class="dialog-actions"><button type="button" class="secondary" id="cancel-dialog">Cancelar</button><button class="primary" value="save">Guardar</button></div>
     </form>
   </dialog>
-  <dialog id="agent-dialog"><form method="dialog"><div class="dialog-head"><h2>Conectar WodBuster</h2><button class="icon" aria-label="Cerrar">×</button></div><p>La conexión se guardará cifrada en el servicio de reservas. Nunca en GitHub Pages ni en el navegador.</p><p>Esta primera vista ya organiza tu agenda; el siguiente paso será el emparejamiento seguro con el servicio.</p><button class="primary">Entendido</button></form></dialog>
+  <dialog id="agent-dialog"><form method="dialog"><div class="dialog-head"><h2>Conectar WodBuster</h2><button class="icon" aria-label="Cerrar">×</button></div><p>Tu usuario de WodBuster se guardará cifrado en el servicio de reservas. Nunca en GitHub Pages ni en el navegador.</p><p>El backend aún no está publicado: el formulario de conexión se activará cuando esa capa segura esté desplegada.</p><button class="primary">Entendido</button></form></dialog>
+  <dialog id="auth-dialog">
+    <form id="auth-form">
+      <div class="dialog-head"><h2>Tu cuenta</h2><button type="button" class="icon" id="close-auth" aria-label="Cerrar">×</button></div>
+      <p>Una cuenta de esta app, no una cuenta de Firebase. Sirve para proteger tus reservas y sincronizarlas.</p>
+      <label>Correo<input id="auth-email" type="email" autocomplete="email" required></label>
+      <label>Contraseña<input id="auth-password" type="password" autocomplete="current-password" minlength="8" required></label>
+      <p class="auth-message" id="auth-message" aria-live="polite"></p>
+      <div class="dialog-actions"><button type="button" class="secondary" id="register">Crear cuenta</button><button class="primary" value="login">Entrar</button></div>
+    </form>
+  </dialog>
   <script src="firebase-config.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
