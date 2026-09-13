@@ -46,10 +46,10 @@
   <dialog id="agent-dialog"><form method="dialog"><div class="dialog-head"><h2>Conectar WodBuster</h2><button class="icon" aria-label="Cerrar">×</button></div><p>Tu usuario de WodBuster se guardará cifrado en el servicio de reservas. Nunca en GitHub Pages ni en el navegador.</p><p>El backend aún no está publicado: el formulario de conexión se activará cuando esa capa segura esté desplegada.</p><button class="primary">Entendido</button></form></dialog>
   <dialog id="auth-dialog">
     <form id="auth-form">
-      <div class="dialog-head"><h2>Tu cuenta</h2><button type="button" class="icon" id="close-auth" aria-label="Cerrar">×</button></div>
-      <p>Una cuenta de esta app, no una cuenta de Firebase. Sirve para proteger tus reservas y sincronizarlas.</p>
-      <label>Correo<input id="auth-email" type="email" autocomplete="email" required></label>
-      <label>Contraseña<input id="auth-password" type="password" autocomplete="current-password" minlength="8" required></label>
+      <div class="dialog-head"><h2>Cuenta Gym Booking Hub</h2><button type="button" class="icon" id="close-auth" aria-label="Cerrar">×</button></div>
+      <p><strong>No uses aquí tu cuenta de WodBuster.</strong> Crea una cuenta propia para esta app con el correo y contraseña que prefieras. Después conectaremos WodBuster en otra pantalla segura.</p>
+      <label>Tu correo<input id="auth-email" type="email" autocomplete="email" required></label>
+      <label>Contraseña nueva de esta app<input id="auth-password" type="password" autocomplete="current-password" minlength="8" required></label>
       <p class="auth-message" id="auth-message" aria-live="polite"></p>
       <div class="dialog-actions"><button type="button" class="secondary" id="register">Crear cuenta</button><button class="primary" value="login">Entrar</button></div>
     </form>
