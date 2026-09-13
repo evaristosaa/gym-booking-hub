@@ -78,7 +78,10 @@ function authError(error) {
   if (error.code === "auth/email-already-in-use") return "Ese correo ya tiene cuenta. Prueba a entrar.";
   if (error.code === "auth/invalid-credential") return "Correo o contraseña incorrectos.";
   if (error.code === "auth/weak-password") return "La contraseña necesita al menos 8 caracteres.";
-  return "No se pudo completar el acceso. Prueba de nuevo.";
+  if (error.code === "auth/network-request-failed") return "No se pudo contactar con el acceso. Revisa la conexión o la VPN y prueba de nuevo.";
+  if (error.code === "auth/unauthorized-domain") return "Esta dirección aún no está autorizada. Recarga la app y prueba de nuevo.";
+  if (error.code === "auth/too-many-requests") return "Demasiados intentos seguidos. Espera unos minutos antes de volver a probar.";
+  return `No se pudo completar el acceso (${error.code || "error desconocido"}).`;
 }
 async function authenticate(action) {
   const email = document.querySelector("#auth-email").value.trim();
