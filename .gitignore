@@ -4,4 +4,8 @@ node_modules/
 dist/
 agent/.env
 agent/data/
-
+backend/.venv/
+backend/.env
+backend/__pycache__/
+backend/.pytest_cache/
+**/__pycache__/
