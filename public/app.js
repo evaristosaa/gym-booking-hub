@@ -26,6 +26,7 @@ function render() {
 document.querySelector("#add-target").onclick = () => dialog.showModal();
 document.querySelector("#close-dialog").onclick = document.querySelector("#cancel-dialog").onclick = () => dialog.close();
 document.querySelector("#agent-info").onclick = () => document.querySelector("#agent-dialog").showModal();
+document.querySelector("#connect").onclick = () => document.querySelector("#agent-dialog").showModal();
 form.addEventListener("submit", event => { event.preventDefault(); const item = {id: crypto.randomUUID(), day: form.weekday.value, time: form["class-time"].value, launch: form["launch-time"].value}; save([...load(), item]); dialog.close(); form.reset(); form["class-time"].value="18:00"; form["launch-time"].value="15:30"; render(); });
 render();
-
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");

@@ -37,18 +37,33 @@ A user sees an understandable weekly agenda that differentiates configured targe
 
 ---
 
-### User Story 3 - Connect a personal booking agent (Priority: P2)
+### User Story 3 - Connect a personal booking service (Priority: P2)
 
-A user can connect their own local booking agent to synchronise real reservation outcomes and activate scheduled attempts without exposing credentials to the public site.
+A user can connect their WodBuster account to a secure booking service that synchronises real reservations and launches due attempts without exposing credentials to the public site.
 
-**Why this priority**: Browser-only GitHub Pages cannot keep credentials or run Friday tasks after the browser closes.
+**Why this priority**: Browser-only GitHub Pages cannot run Friday tasks after the browser closes or send reliable booking notifications.
 
-**Independent Test**: A user without an agent sees a clear offline state; a user with an authorised agent sees its connection and most recent sync without revealing secrets.
+**Independent Test**: A user without a connection sees a clear offline state; a connected user sees the latest sync without revealing secrets.
 
 **Acceptance Scenarios**:
 
-1. **Given** no agent is connected, **When** the user opens connection settings, **Then** the app explains that booking is not active and does not ask for their WodBuster password.
-2. **Given** a connected agent, **When** it reports a booking result, **Then** the agenda updates with the reported state and time.
+1. **Given** no booking connection, **When** the user opens connection settings, **Then** the app explains that booking is not active.
+2. **Given** a connected account, **When** the service reports a booking result, **Then** the agenda updates with the reported state and time.
+
+---
+
+### User Story 4 - Use it as a mobile app (Priority: P1)
+
+A user installs the application on Android, opens a compact dashboard without unnecessary scrolling, and connects their booking account through a secure device-owned component.
+
+**Why this priority**: The product is meant for a phone; credentials and scheduled execution must stay under the user's control on that phone.
+
+**Independent Test**: A user installs the app, opens its home screen, and sees their upcoming targets and live reservations without a promotional hero or explanatory filler.
+
+**Acceptance Scenarios**:
+
+1. **Given** an installed app with two targets, **When** the user opens it, **Then** the account status, planned targets and live reservations are visible in the first phone screen where space permits.
+2. **Given** a user connects WodBuster, **When** credentials are provided, **Then** they are sent over a secure connection and stored encrypted by the booking service, never by GitHub Pages.
 
 ### Edge Cases
 
@@ -65,17 +80,22 @@ A user can connect their own local booking agent to synchronise real reservation
 - **FR-002**: The default weekly launch time MUST be Friday at 15:30 and users MUST be able to change it.
 - **FR-003**: The app MUST show each target's next intended class date and next launch time in Europe/Madrid time.
 - **FR-004**: The app MUST distinguish planned, pending, confirmed and failed reservation states.
-- **FR-005**: The public site MUST remain usable without credentials and MUST not request or persist booking-provider passwords.
-- **FR-006**: The app MUST clearly show when no personal booking agent is connected.
-- **FR-007**: A connected agent MUST be the only component allowed to execute booking attempts or retain provider credentials.
-- **FR-008**: The app MUST make manual reservations reconcilable when the connected agent reports them.
+- **FR-005**: The public site MUST remain usable without a booking connection and MUST never persist booking-provider passwords locally.
+- **FR-006**: The app MUST clearly show when no booking service is connected.
+- **FR-007**: The booking service MUST be the only component allowed to execute booking attempts and retain encrypted provider credentials.
+- **FR-008**: The app MUST make manual reservations reconcilable when the booking service reports them.
 - **FR-009**: The project MUST be publishable as a static GitHub Pages site without personal network addresses or secrets.
+- **FR-010**: The mobile home screen MUST prioritise account state, planned targets and live reservations over decorative headings or explanatory sections.
+- **FR-011**: The installed Android application MUST never retain booking credentials; the booking service MUST store them encrypted and never return them to the client.
+- **FR-012**: The service MUST evaluate due Friday launch times in Europe/Madrid and must not drift during daylight-saving transitions.
+- **FR-013**: The service MUST notify the subscribed mobile device after each settled reservation attempt.
 
 ### Key Entities
 
 - **Booking target**: Recurring class intention with weekday, class time and launch time.
 - **Reservation outcome**: A dated state reported for a target, including planned, pending, confirmed or failed.
-- **Personal agent**: User-owned local component that securely connects to the booking provider and reports outcomes.
+- **Booking service**: Backend component that stores encrypted provider credentials, executes schedules and reports outcomes.
+- **Push subscription**: Device-specific, revocable address used to notify a user after a booking result.
 
 ## Success Criteria *(mandatory)*
 
@@ -91,6 +111,5 @@ A user can connect their own local booking agent to synchronise real reservation
 
 - WodBuster remains the first supported booking provider, but the public app does not present itself as an official WodBuster product.
 - The first public release is Spanish and mobile-first.
-- Each person runs or authorises their own local agent; there is no shared central account service in the first release.
-- GitHub Pages hosts only static assets; scheduled booking execution is intentionally deferred to the user-owned agent.
-
+- A shared booking backend will be hosted separately from GitHub Pages before real accounts are enabled.
+- GitHub Pages hosts only static assets; scheduled booking execution and Web Push happen in the backend.
