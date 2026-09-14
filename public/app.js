@@ -181,7 +181,7 @@ function renderWatches() {
   for (const watch of remoteWatches) {
     const date = new Date(`${watch.class_date}T12:00:00`);
     const li = document.createElement("li");
-    li.innerHTML = `<span class="date"><b>${date.getDate()}</b>${date.toLocaleDateString("es-ES", {month:"short"})}</span><div><strong>${watch.class_time}</strong><small>${watch.last_result || "Vigilando plazas libres cada 5 minutos"}</small></div><span class="state">VIGILANDO</span><button class="delete" aria-label="Dejar de vigilar">×</button>`;
+    li.innerHTML = `<span class="date"><b>${date.getDate()}</b>${date.toLocaleDateString("es-ES", {month:"short"})}</span><div><strong>${watch.class_time}</strong><small>${watch.last_result || "Vigilando plazas libres cada 10 minutos"}</small></div><span class="state">VIGILANDO</span><button class="delete" aria-label="Dejar de vigilar">×</button>`;
     li.querySelector(".delete").onclick = async () => {
       await apiRequest(`/v1/availability-watches/${watch.id}`, { method: "DELETE" });
       remoteWatches = remoteWatches.filter(item => item.id !== watch.id);

@@ -30,7 +30,7 @@
 
     <section class="card watch-card">
       <div class="section-title"><div><p class="eyebrow">ENTRE SEMANA</p><h2>Caza plazas</h2></div><button type="button" class="primary" id="add-watch">Vigilar clase</button></div>
-      <p class="card-note">Si ahora está completa, buscamos una baja cada 5 minutos y reservamos en cuanto haya hueco.</p>
+      <p class="card-note">Si ahora está completa, buscamos una baja cada 10 minutos y reservamos en cuanto haya hueco.</p>
       <ul id="watches" class="agenda" aria-live="polite"></ul>
       <p class="empty" id="watches-empty">No estás vigilando ninguna clase.</p>
       <button type="button" class="secondary notifications-button" id="enable-notifications">Activar avisos en este móvil</button>
@@ -66,7 +66,7 @@
   <dialog id="watch-dialog">
     <form method="dialog" id="watch-form">
       <div class="dialog-head"><h2>Vigilar una plaza</h2><button type="button" class="icon" id="close-watch" aria-label="Cerrar">×</button></div>
-      <p>Si la clase está llena, comprobaremos cada 5 minutos hasta que empiece. Al liberarse una plaza, la reservamos y te avisamos aquí.</p>
+      <p>Si la clase está llena, comprobaremos cada 10 minutos hasta que empiece. Al liberarse una plaza, la reservamos y te avisamos aquí.</p>
       <label>Fecha de la clase<input id="watch-date" type="date" required></label>
       <label>Hora de clase<input id="watch-time" type="time" value="18:00" required></label>
       <div class="dialog-actions"><button type="button" class="secondary" id="cancel-watch">Cancelar</button><button class="primary" value="save">Empezar a vigilar</button></div>

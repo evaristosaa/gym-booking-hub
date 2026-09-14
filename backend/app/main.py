@@ -208,10 +208,16 @@ def create_availability_watch(
     if watch.class_date < datetime.now().date():
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="La clase ya ha pasado")
     collection = availability_watches_collection(user_id(user))
+    active_watches = list(collection.where("active", "==", True).stream())
+    if len(active_watches) >= 3:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Máximo de tres vigilancias activas por cuenta",
+        )
     duplicate = next(
         (
             doc
-            for doc in collection.where("active", "==", True).stream()
+            for doc in active_watches
             if doc.to_dict().get("class_date") == watch.class_date.isoformat()
             and doc.to_dict().get("class_time") == watch.class_time
         ),
@@ -225,7 +231,7 @@ def create_availability_watch(
         "class_time": watch.class_time,
         "active": True,
         "created_at": datetime.now(timezone.utc),
-        "last_result": "Vigilando plazas libres cada 5 minutos",
+        "last_result": "Vigilando plazas libres cada 10 minutos",
         "last_checked_at": None,
     }
     document.set(payload)
