@@ -20,8 +20,14 @@ const wodbusterForm = document.querySelector("#wodbuster-form");
 const wodbusterMessage = document.querySelector("#wodbuster-message");
 const liveReservations = document.querySelector("#live-reservations");
 const liveEmpty = document.querySelector("#live-empty");
+const watchDialog = document.querySelector("#watch-dialog");
+const watchForm = document.querySelector("#watch-form");
+const watchesList = document.querySelector("#watches");
+const watchesEmpty = document.querySelector("#watches-empty");
+const notificationMessage = document.querySelector("#notification-message");
 let wodbusterStatus = { configured: false, verified: false };
 let remoteSchedules = null;
+let remoteWatches = [];
 
 function load() { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function save(items) { localStorage.setItem(key, JSON.stringify(items)); }
@@ -59,7 +65,15 @@ function render() {
 }
 
 document.querySelector("#add-target").onclick = () => dialog.showModal();
+document.querySelector("#add-watch").onclick = () => {
+  const today = new Date();
+  const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  document.querySelector("#watch-date").min = localDate;
+  document.querySelector("#watch-date").value ||= localDate;
+  watchDialog.showModal();
+};
 document.querySelector("#close-dialog").onclick = document.querySelector("#cancel-dialog").onclick = () => dialog.close();
+document.querySelector("#close-watch").onclick = document.querySelector("#cancel-watch").onclick = () => watchDialog.close();
 connectionButton.onclick = () => wodbusterStatus.configured ? testWodBuster() : wodbusterDialog.showModal();
 document.querySelector("#close-wodbuster").onclick = document.querySelector("#cancel-wodbuster").onclick = () => wodbusterDialog.close();
 document.querySelector("#close-auth").onclick = () => authDialog.close();
@@ -161,6 +175,59 @@ function renderLiveReservations(items) {
     liveReservations.append(li);
   }
 }
+function renderWatches() {
+  watchesList.replaceChildren();
+  watchesEmpty.hidden = remoteWatches.length > 0;
+  for (const watch of remoteWatches) {
+    const date = new Date(`${watch.class_date}T12:00:00`);
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="date"><b>${date.getDate()}</b>${date.toLocaleDateString("es-ES", {month:"short"})}</span><div><strong>${watch.class_time}</strong><small>${watch.last_result || "Vigilando plazas libres cada 5 minutos"}</small></div><span class="state">VIGILANDO</span><button class="delete" aria-label="Dejar de vigilar">×</button>`;
+    li.querySelector(".delete").onclick = async () => {
+      await apiRequest(`/v1/availability-watches/${watch.id}`, { method: "DELETE" });
+      remoteWatches = remoteWatches.filter(item => item.id !== watch.id);
+      renderWatches();
+    };
+    watchesList.append(li);
+  }
+}
+async function refreshWatches() {
+  try {
+    const response = await apiRequest("/v1/availability-watches");
+    if (!response.ok) throw new Error("watches-failed");
+    remoteWatches = (await response.json()).watches || [];
+    renderWatches();
+  } catch { /* The user can still use the Friday plan if the worker is unavailable. */ }
+}
+watchForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    const response = await apiRequest("/v1/availability-watches", {
+      method: "POST",
+      body: JSON.stringify({ class_date: document.querySelector("#watch-date").value, class_time: document.querySelector("#watch-time").value }),
+    });
+    if (!response.ok) throw new Error("watch-failed");
+    watchForm.reset(); watchDialog.close(); await refreshWatches();
+  } catch { notificationMessage.textContent = "No se pudo activar la vigilancia. Prueba de nuevo."; }
+});
+function urlBase64ToUint8Array(value) {
+  const padding = "=".repeat((4 - value.length % 4) % 4);
+  const bytes = atob((value + padding).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(bytes, char => char.charCodeAt(0));
+}
+document.querySelector("#enable-notifications").onclick = async () => {
+  const key = window.GYM_BOOKING_FIREBASE.webPushPublicKey;
+  if (!auth.currentUser) { notificationMessage.textContent = "Entra primero con tu cuenta de Gym Booking Hub."; return; }
+  if (!key || !("Notification" in window) || !("PushManager" in window)) { notificationMessage.textContent = "Los avisos aún se están preparando."; return; }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") throw new Error("denied");
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
+    const response = await apiRequest("/v1/push-subscriptions", { method: "PUT", body: JSON.stringify(subscription) });
+    if (!response.ok) throw new Error("save-failed");
+    notificationMessage.textContent = "Avisos activados en este móvil.";
+  } catch { notificationMessage.textContent = "No se pudieron activar los avisos. Revisa los permisos del navegador."; }
+};
 async function refreshLiveReservations() {
   if (!wodbusterStatus.verified) return;
   liveEmpty.hidden = false; liveEmpty.textContent = "Leyendo reservas confirmadas…";
@@ -217,6 +284,7 @@ onAuthStateChanged(auth, user => {
   verifyRemoteSession(user);
   refreshWodBusterStatus();
   syncSchedules();
+  refreshWatches();
 });
 
 render();

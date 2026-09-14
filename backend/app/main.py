@@ -7,7 +7,7 @@ cannot accidentally downgrade secrets to plain text.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,9 +16,15 @@ from pydantic import BaseModel, Field
 from .settings import get_settings
 from .auth import verified_firebase_user
 from .security import CredentialCipher, EncryptionUnavailable
-from .store import schedules_collection, wodbuster_connection as load_wodbuster_connection, wodbuster_document
+from .store import (
+    availability_watches_collection,
+    push_subscriptions_collection,
+    schedules_collection,
+    wodbuster_connection as load_wodbuster_connection,
+    wodbuster_document,
+)
 from .wodbuster import InvalidCredentials, WodBusterClient, WodBusterError
-from .worker import run_due_schedules
+from .worker import run_availability_watches, run_due_schedules
 
 
 settings = get_settings()
@@ -55,6 +61,16 @@ class ScheduleInput(BaseModel):
     weekday: int = Field(ge=0, le=6, description="Sunday=0, Monday=1")
     class_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     launch_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+class AvailabilityWatchInput(BaseModel):
+    class_date: date
+    class_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+class PushSubscriptionInput(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=4096)
+    keys: dict[str, str]
 
 
 def user_id(user: dict[str, object]) -> str:
@@ -177,6 +193,68 @@ def disable_schedule(schedule_id: str, user: dict[str, object] = Depends(verifie
     return {"disabled": True}
 
 
+@app.get("/v1/availability-watches", include_in_schema=False)
+def availability_watches(user: dict[str, object] = Depends(verified_firebase_user)) -> dict[str, object]:
+    docs = availability_watches_collection(user_id(user)).where("active", "==", True).stream()
+    items = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+    return {"watches": sorted(items, key=lambda item: (item["class_date"], item["class_time"]))}
+
+
+@app.post("/v1/availability-watches", include_in_schema=False)
+def create_availability_watch(
+    watch: AvailabilityWatchInput,
+    user: dict[str, object] = Depends(verified_firebase_user),
+) -> dict[str, object]:
+    if watch.class_date < datetime.now().date():
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="La clase ya ha pasado")
+    collection = availability_watches_collection(user_id(user))
+    duplicate = next(
+        (
+            doc
+            for doc in collection.where("active", "==", True).stream()
+            if doc.to_dict().get("class_date") == watch.class_date.isoformat()
+            and doc.to_dict().get("class_time") == watch.class_time
+        ),
+        None,
+    )
+    if duplicate:
+        return {"id": duplicate.id, **duplicate.to_dict()}
+    document = collection.document()
+    payload = {
+        "class_date": watch.class_date.isoformat(),
+        "class_time": watch.class_time,
+        "active": True,
+        "created_at": datetime.now(timezone.utc),
+        "last_result": "Vigilando plazas libres cada 5 minutos",
+        "last_checked_at": None,
+    }
+    document.set(payload)
+    return {"id": document.id, **payload}
+
+
+@app.delete("/v1/availability-watches/{watch_id}", include_in_schema=False)
+def disable_availability_watch(
+    watch_id: str, user: dict[str, object] = Depends(verified_firebase_user)
+) -> dict[str, bool]:
+    document = availability_watches_collection(user_id(user)).document(watch_id)
+    if not document.get().exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watch not found")
+    document.update({"active": False, "updated_at": datetime.now(timezone.utc), "last_result": "Cancelada"})
+    return {"disabled": True}
+
+
+@app.put("/v1/push-subscriptions", include_in_schema=False)
+def save_push_subscription(
+    subscription: PushSubscriptionInput, user: dict[str, object] = Depends(verified_firebase_user)
+) -> dict[str, bool]:
+    if not subscription.keys.get("p256dh") or not subscription.keys.get("auth"):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Suscripción push incompleta")
+    push_subscriptions_collection(user_id(user)).document(subscription.endpoint.rsplit("/", 1)[-1]).set(
+        subscription.model_dump()
+    )
+    return {"subscribed": True}
+
+
 @app.post("/internal/run-friday-bookings", include_in_schema=False)
 def run_friday_bookings(x_worker_token: str | None = Header(default=None)) -> dict[str, object]:
     if not settings.worker_token or x_worker_token != settings.worker_token:
@@ -184,3 +262,16 @@ def run_friday_bookings(x_worker_token: str | None = Header(default=None)) -> di
     if not settings.encryption_key:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Credential vault unavailable")
     return {"runs": run_due_schedules(settings.encryption_key)}
+
+
+@app.post("/internal/run-availability-watches", include_in_schema=False)
+def run_between_week_bookings(x_worker_token: str | None = Header(default=None)) -> dict[str, object]:
+    if not settings.worker_token or x_worker_token != settings.worker_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Worker authentication failed")
+    if not settings.encryption_key:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Credential vault unavailable")
+    return {
+        "runs": run_availability_watches(
+            settings.encryption_key, settings.vapid_private_key, settings.vapid_subject
+        )
+    }

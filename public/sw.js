@@ -21,3 +21,17 @@ self.addEventListener("fetch", event => {
     return response;
   }).catch(() => caches.match(event.request)));
 });
+
+self.addEventListener("push", event => {
+  const payload = event.data ? event.data.json() : {};
+  event.waitUntil(self.registration.showNotification(payload.title || "Gym Booking Hub", {
+    body: payload.body || "Tienes una novedad en tus reservas.",
+    icon: "./icon.svg",
+    data: { url: payload.url || "./" },
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data?.url || "./"));
+});

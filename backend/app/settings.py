@@ -16,6 +16,8 @@ class Settings:
     allowed_origins: tuple[str, ...]
     encryption_key: str | None
     worker_token: str | None
+    vapid_private_key: str | None
+    vapid_subject: str
 
 
 def get_settings() -> Settings:
@@ -29,4 +31,6 @@ def get_settings() -> Settings:
         allowed_origins=origins,
         encryption_key=os.getenv("GYM_BOOKING_ENCRYPTION_KEY"),
         worker_token=os.getenv("GYM_BOOKING_WORKER_TOKEN"),
+        vapid_private_key=os.getenv("GYM_BOOKING_VAPID_PRIVATE_KEY"),
+        vapid_subject=os.getenv("GYM_BOOKING_VAPID_SUBJECT", "mailto:admin@gymbookinghub.app"),
     )
